@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Provimi Energy Performance Hub</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{
+ --bg:#f3f6f8;--panel:#fff;--text:#17212b;--muted:#697682;--line:#dfe6eb;
+ --green:#169b62;--green2:#eaf7f1;--red:#d34b4b;--red2:#fdecec;--amber:#c88615;--amber2:#fff6e3;
+ --blue:#2d6fd2;--shadow:0 10px 26px rgba(19,34,48,.065)
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
+header{height:68px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:10}
+.brand{display:flex;align-items:center;gap:12px;font-weight:850}
+.logo{width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,#0f8a55,#24b878);display:grid;place-items:center;color:#fff;font-size:20px}
+.brand small{display:block;color:var(--muted);font-weight:500;font-size:12px;margin-top:2px}
+.top{display:flex;gap:8px;align-items:center}
+select,button,input{font:inherit}
+select,.btn,input{border:1px solid var(--line);border-radius:9px;background:#fff;padding:9px 11px}
+.btn{font-weight:750;cursor:pointer}.btn.primary{background:var(--green);border-color:var(--green);color:#fff}
+.app{display:grid;grid-template-columns:240px 1fr;min-height:calc(100vh - 68px)}
+aside{background:#fff;border-right:1px solid var(--line);padding:18px 12px}
+.nav-parent{width:100%;border:0;background:transparent;padding:12px 13px;border-radius:9px;text-align:left;font-weight:800;color:#43505d;cursor:pointer;margin-bottom:4px}
+.nav-parent.active{background:var(--green2);color:#13784c}
+.subnav{padding:5px 0 8px 12px}.subnav button{width:100%;border:0;background:transparent;text-align:left;padding:9px 12px;border-radius:8px;color:#5d6975;cursor:pointer;font-weight:650}
+.subnav button.active{background:#f1f8f4;color:#13784c}
+main{padding:22px;max-width:1680px;width:100%;margin:0 auto}
+.view{display:none}.view.active{display:block}
+.titlebar{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;margin-bottom:15px}
+h1{margin:0 0 4px;font-size:24px}.subtitle{font-size:12px;color:var(--muted)}
+.status{padding:8px 11px;border-radius:999px;background:var(--green2);color:#13784c;font-size:12px;font-weight:800}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:12px}
+.kpi{padding:16px}.kpi .label{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:800}.kpi .value{font-size:26px;font-weight:850;margin:8px 0 4px}
+.delta{font-size:12px;font-weight:800}.pos{color:var(--green)}.neg{color:var(--red)}.neutral{color:var(--muted)}
+.grid2{display:grid;grid-template-columns:1.45fr 1fr;gap:12px;margin-bottom:12px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px}
+.panel{padding:17px 18px}.panel h3{margin:0 0 5px;font-size:15px}.meta{font-size:12px;color:var(--muted);margin-bottom:10px}
+.device-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px}
+.device-card{padding:16px;cursor:pointer}.device-card h3{margin:5px 0 0;font-size:15px}.device-card .metric{font-size:24px;font-weight:850;margin:12px 0 5px}.tag{font-size:11px;color:var(--muted)}
+.decision{padding:14px;border-radius:11px;border:1px solid var(--line);background:#fff}.decision strong{display:block;margin-bottom:5px}.decision.good{background:var(--green2);border-color:#cfeadf}.decision.bad{background:var(--red2);border-color:#f1caca}.decision.warn{background:var(--amber2);border-color:#f0ddb8}
+.bar{height:7px;border-radius:99px;background:#eef2f5;overflow:hidden;margin-top:7px}.bar i{display:block;height:100%;background:var(--green)}
+.import-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:12px}.files{display:grid;gap:10px}.upload-card{padding:15px}
+.upload-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.drop{margin-top:10px;border:1.5px dashed #bdc7d1;border-radius:10px;background:#fafbfc;padding:16px;text-align:center}
+.drop input{display:none}.drop label{display:inline-block;margin-top:8px;background:var(--green);color:#fff;padding:8px 12px;border-radius:8px;font-weight:800;cursor:pointer}.filename{font-size:12px;color:var(--muted);margin-top:7px}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:10px 8px;border-bottom:1px solid var(--line);text-align:left}th{font-size:10px;text-transform:uppercase;color:var(--muted);letter-spacing:.35px}
+.badge{display:inline-block;padding:5px 8px;border-radius:999px;font-size:10px;font-weight:800}.badge.ok{background:var(--green2);color:#13784c}.badge.warn{background:var(--amber2);color:#8a5d00}
+.actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}.empty{padding:34px;text-align:center;color:var(--muted);border:1px dashed #cbd4db;border-radius:12px;background:#fafbfc}
+.field-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px}.field{font-size:12px;color:var(--muted);font-weight:700}.field input{width:100%;margin-top:5px}
+.small{font-size:11px;color:var(--muted)}
+@media(max-width:1150px){.app{grid-template-columns:1fr}aside{display:none}.kpis{grid-template-columns:repeat(2,1fr)}.grid2,.grid3,.import-grid{grid-template-columns:1fr}.device-cards{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<header>
+ <div class="brand"><div class="logo">⚡</div><div>Provimi Energy Performance Hub<small>Schneider PME · Production · CI Effectiveness</small></div></div>
+ <div class="top">
+  <select id="periodMode" onchange="setMode(this.value)"><option value="week">Weekly</option><option value="month">Monthly</option></select>
+  <button class="btn primary" onclick="showView('import')">+ Import 5 files</button>
+ </div>
+</header>
+<div class="app">
+<aside>
+ <button class="nav-parent active" onclick="showView('dashboard')">▦ Dashboard</button>
+ <div class="subnav">
+  <button data-view="dashboard" class="active" onclick="showView('dashboard')">Overview</button>
+  <button data-view="hm" onclick="showView('hm')">HM310A</button>
+  <button data-view="mixA" onclick="showView('mixA')">Mixer A</button>
+  <button data-view="mixB" onclick="showView('mixB')">Mixer B</button>
+  <button data-view="compressor" onclick="showView('compressor')">Air Compressor</button>
+ </div>
+ <button class="nav-parent" data-view="import" onclick="showView('import')">⇧ Import Center</button>
+ <button class="nav-parent" data-view="reports" onclick="showView('reports')">▤ Reports</button>
+</aside>
+<main>
+
+<section id="dashboard" class="view active">
+ <div class="titlebar">
+  <div><h1>Energy Performance Overview</h1><div class="subtitle" id="periodText">Chưa có dữ liệu kỳ báo cáo</div></div>
+  <span class="status" id="dataStatus">● Awaiting import</span>
+ </div>
+
+ <div class="kpis">
+  <div class="card kpi"><div class="label">Total production</div><div class="value" id="prodTotal">—</div><div class="delta neutral">Current period</div></div>
+  <div class="card kpi"><div class="label">Whole plant energy</div><div class="value" id="plantEnergy">—</div><div class="delta neutral">Main meter</div></div>
+  <div class="card kpi"><div class="label">Plant SEC</div><div class="value" id="plantSec">—</div><div class="delta neutral">kWh/t</div></div>
+  <div class="card kpi"><div class="label">Tracked loads share</div><div class="value" id="trackedShare">—</div><div class="delta neutral">of whole plant</div></div>
+  <div class="card kpi"><div class="label">KPI Target</div><div class="value"><input id="plantKpi" type="number" step="0.1" placeholder="Nhập KPI" style="width:120px"></div><div class="delta neutral">Editable</div></div>
+ </div>
+
+ <div class="grid2">
+  <div class="card panel"><h3 id="trendTitle">Trend</h3><div class="meta" id="trendMeta">Weekly: 6 tuần gần nhất · Monthly: 6 tháng gần nhất</div><div id="trendEmpty" class="empty">Import dữ liệu để hiển thị biểu đồ xu hướng và so sánh kỳ trước.</div></div>
+  <div class="card panel"><h3>Energy Share · Whole Plant</h3><div class="meta">Tỷ trọng thực tế = Energy thiết bị / Energy toàn nhà máy</div><div id="shareEmpty" class="empty">Chưa có dữ liệu tỷ trọng.</div></div>
+ </div>
+
+ <div class="device-cards">
+  <div class="card device-card" onclick="showView('hm')"><div class="tag">Grinding</div><h3>HM310A</h3><div class="metric" id="hmSecCard">—</div><div class="delta neutral" id="hmDelta">Awaiting data</div></div>
+  <div class="card device-card" onclick="showView('mixA')"><div class="tag">Mixing</div><h3>Mixer A</h3><div class="metric" id="mixASecCard">—</div><div class="delta neutral" id="mixADelta">Awaiting data</div></div>
+  <div class="card device-card" onclick="showView('mixB')"><div class="tag">Mixing</div><h3>Mixer B</h3><div class="metric" id="mixBSecCard">—</div><div class="delta neutral" id="mixBDelta">Awaiting data</div></div>
+  <div class="card device-card" onclick="showView('compressor')"><div class="tag">Utility</div><h3>Air Compressor</h3><div class="metric" id="compSecCard">—</div><div class="delta neutral" id="compDelta">Awaiting data</div></div>
+ </div>
+
+ <div class="grid3">
+  <div class="decision good"><strong>Maintain</strong><span id="maintainText">Chưa có thiết bị đủ dữ liệu để xác nhận xu hướng tích cực.</span></div>
+  <div class="decision bad"><strong>Investigate</strong><span id="investigateText">Chưa có dữ liệu để phát hiện thiết bị suy giảm.</span></div>
+  <div class="decision warn"><strong>Watch</strong><span id="watchText">Hệ thống sẽ phân biệt tăng điện do sản lượng và tăng SEC bất thường.</span></div>
+ </div>
+</section>
+
+<section id="hm" class="view"></section>
+<section id="mixA" class="view"></section>
+<section id="mixB" class="view"></section>
+<section id="compressor" class="view"></section>
+
+<section id="import" class="view">
+ <div class="titlebar"><div><h1>Import Center · 5 Files</h1><div class="subtitle">Upload riêng từng nguồn để giảm sai mapping và dễ audit</div></div><span class="status">Required inputs</span></div>
+ <div class="import-grid">
+  <div class="files">
+   <div class="card upload-card"><div class="upload-head"><b>1 · Whole Plant Energy</b><span class="badge ok">Required</span></div><div class="drop">PME main meter / transformer total energy<label for="f1">Choose file</label><input id="f1" type="file" accept=".xlsx,.xls,.csv" onchange="loadEnergyFile(this,'plant','n1')"><div id="n1" class="filename">No file selected</div></div></div>
+   <div class="card upload-card"><div class="upload-head"><b>2 · Production</b><span class="badge ok">Required</span></div><div class="drop">Soy47 · Soy50 · Mixer A · Mixer B<label for="f2">Choose file</label><input id="f2" type="file" accept=".xlsx,.xls,.csv" onchange="loadProductionFile(this,'n2')"><div id="n2" class="filename">No file selected</div></div>
+    <div class="field-grid"><label class="field">Soy47 (t)<input id="soy47" type="number"></label><label class="field">Soy50 (t)<input id="soy50" type="number"></label><label class="field">Mixer A (t)<input id="prodMixA" type="number"></label><label class="field">Mixer B (t)<input id="prodMixB" type="number"></label></div>
+   </div>
+   <div class="card upload-card"><div class="upload-head"><b>3 · HM310A Energy</b><span class="badge ok">Required</span></div><div class="drop">PME report · HM310A<label for="f3">Choose file</label><input id="f3" type="file" accept=".xlsx,.xls,.csv" onchange="loadEnergyFile(this,'hm','n3')"><div id="n3" class="filename">No file selected</div></div></div>
+   <div class="card upload-card"><div class="upload-head"><b>4 · Mixer A Energy</b><span class="badge ok">Required</span></div><div class="drop">PME report · Mixer A<label for="f4">Choose file</label><input id="f4" type="file" accept=".xlsx,.xls,.csv" onchange="loadEnergyFile(this,'mixA','n4')"><div id="n4" class="filename">No file selected</div></div></div>
+   <div class="card upload-card"><div class="upload-head"><b>5 · Mixer B Energy</b><span class="badge ok">Required</span></div><div class="drop">PME report · Mixer B<label for="f5">Choose file</label><input id="f5" type="file" accept=".xlsx,.xls,.csv" onchange="loadEnergyFile(this,'mixB','n5')"><div id="n5" class="filename">No file selected</div></div></div>
+  </div>
+
+  <div class="card panel">
+   <h3>Validation & Mapping</h3><div class="meta">PME cumulative energy logic: End meter − Start meter</div>
+   <table><tr><th>Dataset</th><th>Consumption</th><th>Status</th></tr>
+    <tr><td>Whole Plant</td><td id="vPlant">—</td><td id="sPlant"><span class="badge warn">Awaiting</span></td></tr>
+    <tr><td>HM310A</td><td id="vHm">—</td><td id="sHm"><span class="badge warn">Awaiting</span></td></tr>
+    <tr><td>Mixer A</td><td id="vMixA">—</td><td id="sMixA"><span class="badge warn">Awaiting</span></td></tr>
+    <tr><td>Mixer B</td><td id="vMixB">—</td><td id="sMixB"><span class="badge warn">Awaiting</span></td></tr>
+    <tr><td>Air Compressor</td><td id="vComp">—</td><td><span class="badge warn">Map from plant report if present</span></td></tr>
+   </table>
+   <div class="decision warn" style="margin-top:14px"><strong>Compressor rule</strong>Vì bộ input hiện có 5 file, dữ liệu máy nén khí phải tồn tại như một series/source trong file Whole Plant Energy. Nếu report tổng không chứa source này, hệ thống sẽ cần file Compressor riêng.</div>
+   <div class="actions"><button class="btn" onclick="resetData()">Reset</button><button class="btn primary" onclick="processAll()">Process & Update Dashboard</button></div>
+  </div>
+ </div>
+</section>
+
+<section id="reports" class="view">
+ <div class="titlebar"><div><h1>Management Reports</h1><div class="subtitle">Weekly / Monthly decision pack</div></div></div>
+ <div class="grid3">
+  <div class="card panel"><h3>Weekly Review</h3><p class="small">Current week vs previous weeks, device SEC, energy share, decision signals.</p></div>
+  <div class="card panel"><h3>Monthly Review</h3><p class="small">Selected month vs previous 5 months, KPI status and deterioration ranking.</p></div>
+  <div class="card panel"><h3>CI Effectiveness</h3><p class="small">Before/after normalized kWh/t, avoided energy and saving potential.</p></div>
+ </div>
+</section>
+
+</main>
+</div>
+<script>
+const state={mode:'week',energy:{plant:null,hm:null,mixA:null,mixB:null,compressor:null},production:{soy47:0,soy50:0,mixA:0,mixB:0}};
+function showView(id){
+ document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+ document.getElementById(id).classList.add('active');
+ document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===id));
+ if(['hm','mixA','mixB','compressor'].includes(id)) renderDevice(id);
+}
+function setMode(v){state.mode=v;document.getElementById('trendTitle').textContent=v==='month'?'6-Month SEC Trend':'6-Week SEC Trend';}
+function num(v){return typeof v==='number'&&!isNaN(v)?v:null}
+function fmt(v,d=2){return v==null?'—':v.toLocaleString('en-US',{maximumFractionDigits:d})}
+function status(id,ok){document.getElementById(id).innerHTML=ok?'<span class="badge ok">Ready</span>':'<span class="badge warn">Check</span>'}
+function readWorkbook(file,cb){
+ const r=new FileReader();r.onload=e=>{try{const data=new Uint8Array(e.target.result);const wb=XLSX.read(data,{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null});cb(rows)}catch(err){alert('Không đọc được file: '+err.message)}};r.readAsArrayBuffer(file);
+}
+function extractEnergy(rows){
+ let vals=[];
+ for(const row of rows){
+   for(let c=1;c<row.length;c++){
+     const v=row[c];
+     if(typeof v==='number' && isFinite(v)) vals.push(v);
+   }
+ }
+ if(vals.length<2) return null;
+ return {start:vals[0],end:vals[vals.length-1],consumption:vals[vals.length-1]-vals[0]};
+}
+function loadEnergyFile(input,key,nameId){
+ if(!input.files.length)return;document.getElementById(nameId).textContent=input.files[0].name;
+ readWorkbook(input.files[0],rows=>{
+   const e=extractEnergy(rows);state.energy[key]=e;
+   const map={plant:['vPlant','sPlant'],hm:['vHm','sHm'],mixA:['vMixA','sMixA'],mixB:['vMixB','sMixB']};
+   if(map[key]){document.getElementById(map[key][0]).textContent=e?fmt(e.consumption)+' kWh':'Không nhận diện';status(map[key][1],!!e)}
+ });
+}
+function findLabel(rows,terms){
+ const norm=s=>String(s||'').toLowerCase().replace(/\s+/g,'').replace(/[^a-z0-9]/g,'');
+ for(let r=0;r<rows.length;r++) for(let c=0;c<rows[r].length;c++){
+   const t=norm(rows[r][c]); if(terms.some(x=>t.includes(norm(x)))){
+     for(let k=c+1;k<rows[r].length;k++) if(typeof rows[r][k]==='number') return rows[r][k];
+     if(r+1<rows.length && typeof rows[r+1][c]==='number') return rows[r+1][c];
+   }
+ } return null;
+}
+function loadProductionFile(input,nameId){
+ if(!input.files.length)return;document.getElementById(nameId).textContent=input.files[0].name;
+ readWorkbook(input.files[0],rows=>{
+  const vals={
+   soy47:findLabel(rows,['soy47','soy 47']),
+   soy50:findLabel(rows,['soy50','soy 50']),
+   mixA:findLabel(rows,['mixer a','mixera','mixer525a']),
+   mixB:findLabel(rows,['mixer b','mixerb','mixer525b'])
+  };
+  if(vals.soy47!=null)document.getElementById('soy47').value=vals.soy47;
+  if(vals.soy50!=null)document.getElementById('soy50').value=vals.soy50;
+  if(vals.mixA!=null)document.getElementById('prodMixA').value=vals.mixA;
+  if(vals.mixB!=null)document.getElementById('prodMixB').value=vals.mixB;
+ });
+}
+function syncProduction(){
+ state.production.soy47=Number(document.getElementById('soy47').value||0);
+ state.production.soy50=Number(document.getElementById('soy50').value||0);
+ state.production.mixA=Number(document.getElementById('prodMixA').value||0);
+ state.production.mixB=Number(document.getElementById('prodMixB').value||0);
+}
+function processAll(){
+ syncProduction();
+ const p=state.production, e=state.energy;
+ const hmProd=p.soy47+p.soy50, totalProd=hmProd+p.mixA+p.mixB;
+ if(!e.plant||!e.hm||!e.mixA||!e.mixB||!totalProd){alert('Cần đủ 5 file và sản lượng hợp lệ trước khi cập nhật dashboard.');return}
+ const hmSec=e.hm.consumption/hmProd, aSec=e.mixA.consumption/p.mixA, bSec=e.mixB.consumption/p.mixB;
+ document.getElementById('prodTotal').textContent=fmt(totalProd)+' t';
+ document.getElementById('plantEnergy').textContent=fmt(e.plant.consumption/1000)+' MWh';
+ document.getElementById('plantSec').textContent=fmt(e.plant.consumption/totalProd)+' kWh/t';
+ const tracked=e.hm.consumption+e.mixA.consumption+e.mixB.consumption+(e.compressor?e.compressor.consumption:0);
+ document.getElementById('trackedShare').textContent=fmt(tracked/e.plant.consumption*100,1)+'%';
+ document.getElementById('hmSecCard').textContent=fmt(hmSec)+' kWh/t';
+ document.getElementById('mixASecCard').textContent=fmt(aSec)+' kWh/t';
+ document.getElementById('mixBSecCard').textContent=fmt(bSec)+' kWh/t';
+ document.getElementById('compSecCard').textContent=e.compressor?fmt(e.compressor.consumption/totalProd)+' kWh/t':'Need compressor series';
+ document.getElementById('periodText').textContent=state.mode==='month'?'Monthly view · 6-month comparison':'Weekly view · 6-week comparison';
+ document.getElementById('dataStatus').textContent='● Data processed';
+ document.getElementById('trendEmpty').innerHTML='<b>Trend history will populate as each new period is imported.</b><br><span class="small">Current values have been saved in this browser session.</span>';
+ document.getElementById('shareEmpty').innerHTML=
+  '<div style="display:grid;gap:12px;text-align:left">'+
+  shareRow('HM310A',e.hm.consumption/e.plant.consumption*100)+
+  shareRow('Mixer A',e.mixA.consumption/e.plant.consumption*100)+
+  shareRow('Mixer B',e.mixB.consumption/e.plant.consumption*100)+
+  '</div>';
+ localStorage.setItem('provimiEnergyState',JSON.stringify(state));
+ showView('dashboard');
+}
+function shareRow(name,p){return '<div><b>'+name+'</b><span style="float:right">'+fmt(p,1)+'%</span><div class="bar"><i style="width:'+Math.min(100,p)+'%"></i></div></div>'}
+function renderDevice(id){
+ const p=state.production,e=state.energy;let name='',en=null,prod=0;
+ if(id==='hm'){name='HM310A';en=e.hm;prod=p.soy47+p.soy50}
+ if(id==='mixA'){name='Mixer A';en=e.mixA;prod=p.mixA}
+ if(id==='mixB'){name='Mixer B';en=e.mixB;prod=p.mixB}
+ if(id==='compressor'){name='Air Compressor';en=e.compressor;prod=p.soy47+p.soy50+p.mixA+p.mixB}
+ const sec=en&&prod?en.consumption/prod:null;
+ document.getElementById(id).innerHTML=
+  '<div class="titlebar"><div><h1>'+name+' · Energy Dashboard</h1><div class="subtitle">Decision-focused device view</div></div></div>'+
+  '<div class="kpis">'+
+  kpi('Energy',en?fmt(en.consumption)+' kWh':'—','Current period')+
+  kpi('Production base',prod?fmt(prod)+' t':'—','Mapped denominator')+
+  kpi('SEC',sec?fmt(sec)+' kWh/t':'—','Lower is better')+
+  kpi('Plant share',en&&e.plant?fmt(en.consumption/e.plant.consumption*100,1)+'%':'—','Whole plant denominator')+
+  kpi('KPI','<input type="number" step="0.1" placeholder="Nhập KPI" style="width:110px">','Editable')+
+  '</div>'+
+  '<div class="grid2"><div class="card panel"><h3>Previous-period comparison</h3><div class="empty">Sẽ hiển thị trend 6 kỳ gần nhất sau khi có lịch sử import.</div></div>'+
+  '<div class="decision warn"><strong>Decision logic</strong>SEC tăng và vượt KPI → Investigate. SEC giảm trong khi production tăng/ổn định → Maintain. Energy tăng nhưng SEC giảm → tăng điện chủ yếu do sản lượng.</div></div>';
+}
+function kpi(label,value,sub){return '<div class="card kpi"><div class="label">'+label+'</div><div class="value">'+value+'</div><div class="delta neutral">'+sub+'</div></div>'}
+function resetData(){localStorage.removeItem('provimiEnergyState');location.reload()}
+(function restore(){try{const s=JSON.parse(localStorage.getItem('provimiEnergyState'));if(s){Object.assign(state,s)}}catch(e){}})();
+</script>
+</body>
+</html>
