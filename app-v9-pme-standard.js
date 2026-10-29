@@ -1,17 +1,17 @@
 (function(){
-const INPUT_MODEL_V9='pme-standard-v4';
+const INPUT_MODEL_V9='pme-standard-v5';
 const SOURCES={
-  hm:{label:'HM310A',aliases:['processq14hm310a','hm310a']},
-  ma:{label:'Mixer A',aliases:['processq15mixer525a','mixer525a']},
-  mb:{label:'Mixer B',aliases:['processq16mixer525b','mixer525b']},
-  comp:{label:'Air Compressor',aliases:['msbdbac']},
-  plant:{label:'Whole Plant',aliases:['msbq12500a']}
+  hm:{label:'HM310A',aliases:['processq14hm310a','hm310a'],metric:'into'},
+  ma:{label:'Mixer A',aliases:['processq15mixer525a','mixer525a'],metric:'into'},
+  mb:{label:'Mixer B',aliases:['processq16mixer525b','mixer525b'],metric:'into'},
+  comp:{label:'Air Compressor',aliases:['msbdbac'],metric:'into'},
+  plant:{label:'Whole Plant',aliases:['msbq12500a'],metric:'real'}
 };
 const KEYS=['plant','hm','ma','mb','comp'];
 function norm(v){return String(v??'').toLowerCase().replace(/[^a-z0-9]/g,'')}
 function bucket15(d){let ms=d.getTime(),q=15*60*1000;return new Date(Math.round(ms/q)*q)}
 function findHeader(rows){let best=null;for(let r=0;r<Math.min(rows.length,50);r++){let row=rows[r]||[],ts=row.findIndex(v=>norm(v).includes('timestamp'));if(ts<0)continue;let score=0;for(let def of Object.values(SOURCES))if(row.some(v=>def.aliases.some(a=>norm(v).includes(a))))score++;if(!best||score>best.score)best={row:r,ts,score}}return best}
-function meterCol(headers,def){let hits=[];headers.forEach((v,i)=>{let h=norm(v);if(!h)return;let src=def.aliases.some(a=>h.includes(a));let metric=h.includes('realenergyintotheload');let bad=h.includes('interval')||h.includes('outoftheload')||h.includes('reactive')||h.includes('apparent')||h.includes('kvar')||h.includes('kva');if(src&&metric&&!bad)hits.push(i)});return hits.length?hits[0]:-1}
+function meterCol(headers,def){let hits=[];headers.forEach((v,i)=>{let h=norm(v);if(!h)return;let src=def.aliases.some(a=>h.includes(a));let bad=h.includes('interval')||h.includes('outoftheload')||h.includes('reactive')||h.includes('apparent')||h.includes('kvar')||h.includes('kva');let metric=false;if(def.metric==='real')metric=h.includes('realenergy')&&!h.includes('intotheload')&&!h.includes('outoftheload');else metric=h.includes('realenergyintotheload');if(src&&metric&&!bad)hits.push(i)});return hits.length?hits[0]:-1}
 function num(v){if(v===null||v===undefined)return null;if(typeof v==='string'&&!v.trim())return null;if(typeof v==='number')return isFinite(v)?v:null;let s=String(v).replace(/,/g,'').trim();if(!s)return null;let n=Number(s);return isFinite(n)?n:null}
 function dayKey(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 function plusDays(ds,n){let d=new Date(ds+'T00:00:00');d.setDate(d.getDate()+n);return dayKey(d)}
@@ -32,7 +32,7 @@ function parsePME(wb){
   let allDays=[...new Set(commonTimes.map(t=>dayKey(new Date(t))))].sort(),energy={plant:{},hm:{},ma:{},mb:{},comp:{}},completeDays=[],excludedDays=[],resets={plant:0,hm:0,ma:0,mb:0,comp:0};
   for(let ds of allDays){let t0=new Date(ds+'T00:00:00').getTime(),t1=new Date(plusDays(ds,1)+'T00:00:00').getTime();if(!commonSet.has(String(t0))||!commonSet.has(String(t1))){excludedDays.push(ds);continue}let ok=true,vals={};for(let k of KEYS){let dv=raw[k][String(t1)]-raw[k][String(t0)];if(!isFinite(dv)||dv<0){if(dv<0)resets[k]++;ok=false;break}vals[k]=dv}if(!ok){excludedDays.push(ds);continue}completeDays.push(ds);for(let k of KEYS)energy[k][ds]=vals[k]}
   let meta={sheet:best.sn,headerRow:best.h.row+1,columns:{},duplicates,commonPoints:commonTimes.length,completeDays:completeDays.length,excludedDays,resets,firstCommon:new Date(commonTimes[0]),lastCommon:new Date(commonTimes.at(-1))};
-  for(let [k,def] of Object.entries(SOURCES))meta.columns[k]={index:cols[k],header:String(headers[cols[k]]||'')};
+  for(let [k,def] of Object.entries(SOURCES))meta.columns[k]={index:cols[k],header:String(headers[cols[k]]||''),metric:def.metric==='real'?'Real Energy (kWh)':'Real Energy Into the Load (kWh)'};
   return{energy,raw,meta};
 }
 function exactValidDays(p){let sets=KEYS.map(k=>new Set(Object.keys(S.energy[k]?.d||{}).filter(ds=>periodOfDateKey(ds)===p)));sets.push(new Set(Object.keys(S.production.d||{}).filter(ds=>periodOfDateKey(ds)===p)));if(sets.some(s=>!s.size))return[];return [...sets[0]].filter(ds=>sets.every(s=>s.has(ds))).sort()}
