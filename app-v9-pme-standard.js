@@ -1,5 +1,5 @@
 (function(){
-const INPUT_MODEL_V9='pme-standard-v3';
+const INPUT_MODEL_V9='pme-standard-v4';
 const SOURCES={
   hm:{label:'HM310A',aliases:['processq14hm310a','hm310a']},
   ma:{label:'Mixer A',aliases:['processq15mixer525a','mixer525a']},
@@ -12,7 +12,7 @@ function norm(v){return String(v??'').toLowerCase().replace(/[^a-z0-9]/g,'')}
 function bucket15(d){let ms=d.getTime(),q=15*60*1000;return new Date(Math.round(ms/q)*q)}
 function findHeader(rows){let best=null;for(let r=0;r<Math.min(rows.length,50);r++){let row=rows[r]||[],ts=row.findIndex(v=>norm(v).includes('timestamp'));if(ts<0)continue;let score=0;for(let def of Object.values(SOURCES))if(row.some(v=>def.aliases.some(a=>norm(v).includes(a))))score++;if(!best||score>best.score)best={row:r,ts,score}}return best}
 function meterCol(headers,def){let hits=[];headers.forEach((v,i)=>{let h=norm(v);if(!h)return;let src=def.aliases.some(a=>h.includes(a));let metric=h.includes('realenergyintotheload');let bad=h.includes('interval')||h.includes('outoftheload')||h.includes('reactive')||h.includes('apparent')||h.includes('kvar')||h.includes('kva');if(src&&metric&&!bad)hits.push(i)});return hits.length?hits[0]:-1}
-function num(v){if(typeof v==='number'&&isFinite(v))return v;let n=Number(String(v??'').replace(/,/g,''));return isFinite(n)?n:null}
+function num(v){if(v===null||v===undefined)return null;if(typeof v==='string'&&!v.trim())return null;if(typeof v==='number')return isFinite(v)?v:null;let s=String(v).replace(/,/g,'').trim();if(!s)return null;let n=Number(s);return isFinite(n)?n:null}
 function dayKey(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 function plusDays(ds,n){let d=new Date(ds+'T00:00:00');d.setDate(d.getDate()+n);return dayKey(d)}
 function parsePME(wb){
