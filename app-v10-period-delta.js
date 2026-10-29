@@ -53,7 +53,6 @@ sec=function(k,p){let e=energy(k,p),pr=prod(p),d=den(pr,k);return e!=null&&d>0?e
 window.periodEnergyDetail=periodEnergyDetail;
 window.commonPeriodEndpoints=commonPeriodEndpoints;
 
-const previousValidation=window.renderValidation;
 window.renderValidation=function(){
   const p=currentKey(),ep=commonPeriodEndpoints(p);let rows='';
   const mapped=S.pmeMeta?.columns?Object.keys(S.pmeMeta.columns).length:0;
@@ -74,7 +73,6 @@ window.renderValidation=function(){
   document.getElementById('validationRows').innerHTML=rows;
 };
 
-const oldProcess=window.processAll;
 window.processAll=function(){
   const p=currentKey(),ep=commonPeriodEndpoints(p);
   if(!ep)return alert('Không tìm thấy cùng timestamp đầu/cuối kỳ cho 5 meter PME trong '+keyLabel(p)+'.');
@@ -83,5 +81,31 @@ window.processAll=function(){
   save();renderAll();renderValidation();showView('dashboard');
 };
 
+function formatImportedAt(iso){
+  if(!iso)return'';
+  try{return new Date(iso).toLocaleString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}catch(e){return''}
+}
+function restoreImportedFileLabels(){
+  const meta=S.importFiles||{};
+  const pme=document.getElementById('n1'),prodFile=document.getElementById('n2');
+  if(pme&&meta.pme?.name){pme.textContent='Đã lưu · '+meta.pme.name+(meta.pme.importedAt?' · '+formatImportedAt(meta.pme.importedAt):'');pme.title='Dữ liệu PME đang được lưu trong trình duyệt';}
+  if(prodFile&&meta.production?.name){prodFile.textContent='Đã lưu · '+meta.production.name+(meta.production.importedAt?' · '+formatImportedAt(meta.production.importedAt):'');prodFile.title='Dữ liệu Production đang được lưu trong trình duyệt';}
+}
+function installImportPersistence(){
+  document.querySelectorAll('#fileCards input[type=file]').forEach(inp=>{
+    if(inp.dataset.persistenceBound==='1')return;
+    inp.dataset.persistenceBound='1';
+    inp.addEventListener('change',()=>{
+      if(!inp.files?.length)return;
+      const f=inp.files[0],slot=inp.dataset.prod==='1'?'production':'pme';
+      S.importFiles=S.importFiles||{};
+      S.importFiles[slot]={name:f.name,size:f.size,lastModified:f.lastModified,importedAt:new Date().toISOString()};
+      save();restoreImportedFileLabels();
+    });
+  });
+  restoreImportedFileLabels();
+}
+
+installImportPersistence();
 renderValidation();renderAll();
 })();
