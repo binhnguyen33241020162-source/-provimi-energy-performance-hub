@@ -1,5 +1,6 @@
 (function(){
 const baseProductionFromWorkbook=window.productionFromWorkbook;
+const baseRenderValidation=window.renderValidation;
 function n(v){return String(v??'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'')}
 function val(v){
   if(v===null||v===undefined)return 0;
@@ -22,7 +23,7 @@ function isoMonday(y,w){
   return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0');
 }
 function findHeader(rows,need){
-  for(let r=0;r<Math.min(rows.length,40);r++){
+  for(let r=0;r<Math.min(rows.length,60);r++){
     let ns=(rows[r]||[]).map(n),week=ns.findIndex(x=>x==='weekofyear'||x.includes('weekofyear'));
     if(week<0)continue;
     let cols={week},ok=true;
@@ -34,32 +35,37 @@ function findHeader(rows,need){
   }
   return null;
 }
-function getSheet(wb,target){
-  const exact=wb.SheetNames.find(sn=>n(sn)===n(target));
-  if(exact)return exact;
-  return wb.SheetNames.find(sn=>n(sn).includes(n(target)))||null;
+function findRoleSheet(wb,role){
+  const need=role==='mixer'?{ma:['a'],mb:['b']}:{s47:['htmsoy47'],s50:['htmsoy50']};
+  const candidates=[];
+  for(const sn of wb.SheetNames){
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:true,defval:null});
+    const h=findHeader(rows,need);if(!h)continue;
+    const name=n(sn);let score=0;
+    if(role==='mixer'&&name.includes('mixer'))score+=20;
+    if(role==='grinder'&&name.includes('grinder'))score+=20;
+    if(name.includes('energydata')||name.includes('enerydata'))score+=5;
+    if(name.includes('productionvolumedata'))score-=30;
+    candidates.push({sn,rows,h,score});
+  }
+  candidates.sort((a,b)=>b.score-a.score);
+  return candidates[0]||null;
 }
 function parseWeekly(wb){
-  const mixName=getSheet(wb,'Mixer_Energy_Data');
-  const grinderName=getSheet(wb,'Grinder_Energy_Data');
-  if(!mixName||!grinderName)return null;
-
-  const mixRows=XLSX.utils.sheet_to_json(wb.Sheets[mixName],{header:1,raw:true,defval:null});
-  const grinderRows=XLSX.utils.sheet_to_json(wb.Sheets[grinderName],{header:1,raw:true,defval:null});
-  const mixH=findHeader(mixRows,{ma:['a'],mb:['b']});
-  const grinderH=findHeader(grinderRows,{s47:['htmsoy47'],s50:['htmsoy50']});
-  if(!mixH||!grinderH)return null;
+  const mix=findRoleSheet(wb,'mixer');
+  const grinder=findRoleSheet(wb,'grinder');
+  if(!mix||!grinder)return null;
 
   const byWeek={};
   function ensure(w){return byWeek[w.key]??={week:w.key,y:w.y,w:w.w,s47:0,s50:0,ma:0,mb:0}}
 
-  for(let r=mixH.row+1;r<mixRows.length;r++){
-    const row=mixRows[r]||[],w=weekParts(row[mixH.cols.week]);if(!w)continue;
-    const o=ensure(w);o.ma=val(row[mixH.cols.ma]);o.mb=val(row[mixH.cols.mb]);
+  for(let r=mix.h.row+1;r<mix.rows.length;r++){
+    const row=mix.rows[r]||[],w=weekParts(row[mix.h.cols.week]);if(!w)continue;
+    const o=ensure(w);o.ma=val(row[mix.h.cols.ma]);o.mb=val(row[mix.h.cols.mb]);
   }
-  for(let r=grinderH.row+1;r<grinderRows.length;r++){
-    const row=grinderRows[r]||[],w=weekParts(row[grinderH.cols.week]);if(!w)continue;
-    const o=ensure(w);o.s47=val(row[grinderH.cols.s47]);o.s50=val(row[grinderH.cols.s50]);
+  for(let r=grinder.h.row+1;r<grinder.rows.length;r++){
+    const row=grinder.rows[r]||[],w=weekParts(row[grinder.h.cols.week]);if(!w)continue;
+    const o=ensure(w);o.s47=val(row[grinder.h.cols.s47]);o.s50=val(row[grinder.h.cols.s50]);
   }
 
   const d={},weekly={};
@@ -70,7 +76,8 @@ function parseWeekly(wb){
   const weeks=Object.keys(weekly).sort();
   return{d,weekly,meta:{
     status:weeks.length?'ready':'needs_mapping',format:'weekly_summary',unit:'t',sourceUnit:'kg',conversion:'kg/1000',weeks,
-    sheets:{mixer:mixName,grinder:grinderName},ignored:['PREMIX','Production_Volume_Data'],fields:['A','B','HTMSOY47','HTMSOY50']
+    startWeek:weeks[0]||null,endWeek:weeks.at(-1)||null,
+    sheets:{mixer:mix.sn,grinder:grinder.sn},ignored:['PREMIX','Production_Volume_Data'],fields:['A','B','HTMSOY47','HTMSOY50']
   }};
 }
 window.productionFromWorkbook=function(wb){
@@ -85,9 +92,26 @@ window.buildImport=function(){
   const card=document.querySelector('#fileCards .upload:nth-child(2) .drop');
   if(card){
     const text=card.childNodes[0];
-    if(text&&text.nodeType===3)text.textContent='Weekly production · Mixer_Energy_Data: A/B · Grinder_Energy_Data: HTMSOY47/HTMSOY50 · PREMIX ignored ';
+    if(text&&text.nodeType===3)text.textContent='Weekly production · Mixer sheet: A/B · Grinder sheet: HTMSOY47/HTMSOY50 · PREMIX ignored ';
+  }
+};
+
+window.renderValidation=function(){
+  baseRenderValidation();
+  const m=S.production?.meta;
+  if(!m||m.format!=='weekly_summary')return;
+  const p=currentKey(),current=S.production.weekly?.[p]||null;
+  const rows=[...document.querySelectorAll('#validationRows tr')];
+  const tr=rows.find(r=>/^Production/i.test((r.cells?.[0]?.textContent||'').trim()));
+  if(!tr)return;
+  const total=current?((+current.s47||0)+(+current.s50||0)+(+current.ma||0)+(+current.mb||0)):null;
+  if(total!=null&&tr.cells[1])tr.cells[1].innerHTML=fmt(total)+' t<div style="font-size:10px;color:#7a8792;margin-top:3px">A '+fmt(current.ma)+' · B '+fmt(current.mb)+' · HTMSOY47 '+fmt(current.s47)+' · HTMSOY50 '+fmt(current.s50)+'</div>';
+  if(tr.cells[2]){
+    const label=current?'Weekly mapped':'Parsed '+(m.startWeek||'—')+' → '+(m.endWeek||'—')+' · No '+p;
+    tr.cells[2].innerHTML='<span class="badge '+(current?'ok':'wait')+'" title="Mixer: '+(m.sheets?.mixer||'—')+' | Grinder: '+(m.sheets?.grinder||'—')+'">'+label+'</span>';
   }
 };
 
 if(typeof buildImport==='function')buildImport();
+if(typeof renderValidation==='function')renderValidation();
 })();
